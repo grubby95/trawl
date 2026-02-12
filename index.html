@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>TRAWL — Daily Word Maze</title>
+  <meta name="description" content="Navigate the fog. Find the path. 3 rounds daily. A word puzzle game where connections are hidden until you discover them.">
+  <meta name="theme-color" content="#060a10">
+  <link rel="canonical" href="https://playtrawl.com">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="TRAWL — Daily Word Maze">
+  <meta property="og:description" content="Navigate the fog. Find the path. 3 rounds daily.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://playtrawl.com">
+  <meta property="og:image" content="https://playtrawl.com/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="TRAWL — Daily Word Maze">
+  <meta name="twitter:description" content="Navigate the fog. Find the path. 3 rounds daily.">
+  <meta name="twitter:image" content="https://playtrawl.com/og.png">
+
+  <!-- PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="manifest" href="/manifest.json">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌊</text></svg>">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Google AdSense — replace ca-pub-XXXX with your publisher ID -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXX" crossorigin="anonymous"></script>
+
+  <style>
+    :root { --fd: 'DM Sans', sans-serif; --fm: 'JetBrains Mono', monospace; }
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body, #root { height: 100%; background: #060a10; }
+    body { overscroll-behavior: none; }
+    @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+    @keyframes modalIn { from { opacity: 0; transform: scale(0.92) translateY(10px) } to { opacity: 1; transform: none } }
+    @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-4px)} 40%{transform:translateX(4px)} 60%{transform:translateX(-3px)} 80%{transform:translateX(2px)} }
+    @keyframes celebPop { 0%{transform:scale(1)} 40%{transform:scale(1.12)} 100%{transform:scale(1)} }
+    @keyframes pulseOverlay { from{opacity:1} to{opacity:0} }
+    @keyframes confettiFall { 0%{transform:translateY(0) rotate(0deg);opacity:1} 100%{transform:translateY(100vh) rotate(720deg);opacity:0} }
+    @keyframes winPop { 0%{opacity:0;transform:scale(0.8)} 50%{transform:scale(1.04)} 100%{opacity:1;transform:scale(1)} }
+    @keyframes fadeSlideIn { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:none} }
+    @keyframes slideUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+    @keyframes lineFadeOut { 0%{opacity:0.4} 100%{opacity:0} }
+    @keyframes logoWave { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-2px)} }
+    @keyframes shimmer { 0%{background-position:-200% center} 100%{background-position:200% center} }
+    button { cursor: pointer; font-family: var(--fd); }
+    button:active { transform: scale(0.97) !important; }
+    /* Ad container styling */
+    .ad-slot { display: flex; justify-content: center; padding: 8px 0; min-height: 50px; }
+    .ad-slot ins { max-width: 100%; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useCallback, useRef, useMemo, useLayoutEffect, Fragment } = React;
+
+    const STORAGE = { STATS: "trawl-stats", TODAY: "trawl-today-v5" };
+    const COLS = 4;
+
+    // ── Date Utils ──
+    const getDateSeed = () => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    };
+    const getDayNum = () => Math.floor((Date.now() - new Date("2025-01-01").getTime()) / 86400000);
+    const formatTime = ms => {
+      const s = Math.floor(ms / 1000);
+      return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+    };
+
+    // ── Seeded RNG ──
+    function makeRng(seed) {
+      let h = 0;
+      for (let i = 0; i < seed.length; i++) h = ((h << 5) - h + seed.charCodeAt(i)) | 0;
+      return () => { h = (h * 16807) % 2147483647; return (h & 0x7fffffff) / 0x7fffffff; };
+    }
+
+    // ── BFS ──
+    function bfs(adj, start, end) {
+      const q = [[start]], v = new Set([start]);
+      while (q.length) {
+        const p = q.shift(), n = p[p.length - 1];
+        if (n === end) return p;
+        for (const nb of (adj[n] || [])) if (!v.has(nb)) { v.add(nb); q.push([...p, nb]); }
+      }
+      return null;
+    }
+    function buildAdj(words, edges) {
+      const a = {};
+      words.forEach(w => (a[w] = []));
+      edges.forEach(([x, y]) => {
+        if (a[x] && a[y]) {
+          if (!a[x].includes(y)) a[x].push(y);
+          if (!a[y].includes(x)) a[y].push(x);
+        }
+      });
+      return a;
+    }
+
+    // ── AI Generation (calls Anthropic API — needs key configured via proxy) ──
+    async function generateRound(roundNum, dayNum, dateSeed) {
+      const parTarget = roundNum === 1 ? 3 : roundNum === 2 ? 4 : 5;
+      const wordCount = roundNum === 1 ? 12 : roundNum === 2 ? 14 : 16;
+      const edgeRange = roundNum === 1 ? "15-20" : roundNum === 2 ? "20-26" : "24-32";
+      try {
+        const res = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ roundNum, dayNum, dateSeed, parTarget, wordCount, edgeRange }),
+        });
+        if (!res.ok) throw new Error("API error");
+        const parsed = await res.json();
+        if (parsed.words?.length >= 8 && parsed.edges?.length >= 10) {
+          const adj = buildAdj(parsed.words, parsed.edges);
+          const shortest = bfs(adj, parsed.start, parsed.end);
+          if (shortest) {
+            const actualPar = shortest.length - 1;
+            if (actualPar < parTarget - 1 || actualPar > parTarget + 1) {
+              console.log(`AI puzzle rejected: par ${actualPar} vs target ${parTarget}`);
+            } else {
+              parsed.par = actualPar;
+              parsed.optimalPath = shortest;
+              return parsed;
+            }
+          }
+        }
+      } catch (e) { console.log("AI gen fallback", roundNum, e); }
+      const tierStart = roundNum === 1 ? 0 : roundNum === 2 ? 3 : 6;
+      return FALLBACKS[tierStart + (dayNum % 3)];
+    }
+
+    // ── Fallbacks (BFS-verified, every edge is a real compound word) ──
+    const FALLBACKS = [
+      // Tier 1: EASY
+      {words:["RAIN","BOW","COAT","DROP","STORM","WATER","FALL","OUT"],start:"RAIN",end:"FALL",
+       edges:[["RAIN","BOW"],["RAIN","COAT"],["RAIN","DROP"],["RAIN","STORM"],["RAIN","WATER"],["RAIN","FALL"],["WATER","FALL"],["WATER","DROP"],["DROP","OUT"],["FALL","OUT"],["STORM","WATER"]],
+       par:1,optimalPath:["RAIN","FALL"]},
+      {words:["SNOW","BALL","BOARD","GAME","FLAKE","MAN","STORM","ROOM"],start:"SNOW",end:"GAME",
+       edges:[["SNOW","BALL"],["SNOW","BOARD"],["SNOW","FLAKE"],["SNOW","MAN"],["SNOW","STORM"],["BALL","GAME"],["BALL","ROOM"],["BOARD","GAME"],["BOARD","ROOM"]],
+       par:2,optimalPath:["SNOW","BALL","GAME"]},
+      {words:["FOOT","BALL","ROOM","MATE","STEP","PRINT","NOTE","CHECK"],start:"FOOT",end:"MATE",
+       edges:[["FOOT","BALL"],["FOOT","STEP"],["FOOT","PRINT"],["FOOT","NOTE"],["BALL","ROOM"],["BALL","GAME"],["ROOM","MATE"],["CHECK","MATE"],["CHECK","ROOM"]],
+       par:3,optimalPath:["FOOT","BALL","ROOM","MATE"]},
+
+      // Tier 2: MEDIUM
+      {words:["MOON","STAR","FISH","LIGHT","NIGHT","BONE","DOG","HOUSE","ROCK","BAND","DRUM","STICK"],start:"MOON",end:"STICK",
+       edges:[["MOON","STAR"],["MOON","LIGHT"],["MOON","NIGHT"],["STAR","FISH"],["STAR","LIGHT"],["STAR","ROCK"],["FISH","BONE"],["LIGHT","HOUSE"],["NIGHT","LIGHT"],["BONE","DOG"],["DOG","HOUSE"],["HOUSE","ROCK"],["ROCK","BAND"],["ROCK","DRUM"],["BAND","DRUM"],["DRUM","STICK"]],
+       par:4,optimalPath:["MOON","STAR","ROCK","DRUM","STICK"]},
+      {words:["OCEAN","WAVE","SAND","CASTLE","KING","CROWN","GOLD","FISH","BEACH","SHELL","RING","TOWER"],start:"OCEAN",end:"CROWN",
+       edges:[["OCEAN","WAVE"],["OCEAN","FISH"],["OCEAN","BEACH"],["OCEAN","SAND"],["WAVE","SAND"],["SAND","CASTLE"],["SAND","BEACH"],["CASTLE","KING"],["CASTLE","TOWER"],["KING","CROWN"],["KING","FISH"],["CROWN","GOLD"],["GOLD","RING"],["GOLD","FISH"],["FISH","SHELL"],["BEACH","SHELL"],["SHELL","RING"],["RING","TOWER"],["TOWER","WAVE"]],
+       par:4,optimalPath:["OCEAN","SAND","CASTLE","KING","CROWN"]},
+      {words:["SUN","BURN","FIRE","TRUCK","BED","ROOM","BOARD","IRON","GOLD","MINE","COAL","CLOUD"],start:"SUN",end:"GOLD",
+       edges:[["SUN","BURN"],["SUN","CLOUD"],["SUN","ROOM"],["BURN","FIRE"],["FIRE","TRUCK"],["FIRE","IRON"],["FIRE","COAL"],["TRUCK","BED"],["BED","ROOM"],["BED","BOARD"],["ROOM","BOARD"],["BOARD","IRON"],["IRON","GOLD"],["IRON","MINE"],["GOLD","MINE"],["MINE","COAL"],["COAL","CLOUD"],["CLOUD","SUN"]],
+       par:4,optimalPath:["SUN","BURN","FIRE","IRON","GOLD"]},
+
+      // Tier 3: HARD
+      {words:["SUN","FLOWER","BED","ROOM","MATE","CHECK","BOARD","GAME","BALL","FIRE","LIGHT","HOUSE","TIME","ROCK","BAND","MARK"],start:"SUN",end:"CHECK",
+       edges:[["SUN","FLOWER"],["SUN","LIGHT"],["SUN","BURN"],["FLOWER","BED"],["BED","ROOM"],["BED","TIME"],["BED","ROCK"],["ROOM","MATE"],["ROOM","BOARD"],["MATE","CHECK"],["CHECK","BOARD"],["CHECK","MARK"],["BOARD","GAME"],["GAME","BALL"],["GAME","TIME"],["BALL","ROOM"],["BALL","FIRE"],["FIRE","LIGHT"],["FIRE","HOUSE"],["LIGHT","HOUSE"],["HOUSE","BAND"],["TIME","MARK"],["ROCK","BAND"]],
+       par:5,optimalPath:["SUN","FLOWER","BED","ROOM","MATE","CHECK"]},
+      {words:["CLOUD","RAIN","DROP","WATER","FALL","LEAF","TREE","BIRD","NEST","EGG","SHELL","BEACH","SAND","GLASS","WINDOW","FRAME"],start:"CLOUD",end:"BIRD",
+       edges:[["CLOUD","RAIN"],["RAIN","DROP"],["RAIN","FALL"],["RAIN","WATER"],["DROP","WATER"],["DROP","EGG"],["WATER","FALL"],["WATER","GLASS"],["WATER","BIRD"],["FALL","LEAF"],["LEAF","TREE"],["TREE","BIRD"],["BIRD","NEST"],["BIRD","EGG"],["NEST","EGG"],["EGG","SHELL"],["SHELL","BEACH"],["BEACH","SAND"],["SAND","GLASS"],["GLASS","WINDOW"],["WINDOW","FRAME"]],
+       par:5,optimalPath:["CLOUD","RAIN","FALL","LEAF","TREE","BIRD"]},
+      {words:["SPACE","SHIP","WRECK","BALL","POINT","BLANK","CHECK","MATE","TEA","CUP","CAKE","LAYER","SKIN","DEEP","SLEEP","DREAM"],start:"SPACE",end:"DREAM",
+       edges:[["SPACE","SHIP"],["SPACE","BLANK"],["SPACE","DEEP"],["SHIP","WRECK"],["WRECK","BALL"],["BALL","POINT"],["BALL","CUP"],["BALL","GAME"],["BALL","ROOM"],["POINT","BLANK"],["POINT","CHECK"],["BLANK","CHECK"],["CHECK","MATE"],["MATE","TEA"],["TEA","CUP"],["CUP","CAKE"],["CAKE","LAYER"],["LAYER","SKIN"],["SKIN","DEEP"],["DEEP","SLEEP"],["DEEP","WATER"],["SLEEP","DREAM"],["DREAM","CAKE"]],
+       par:3,optimalPath:["SPACE","DEEP","SLEEP","DREAM"]},
+    ];
+
+    // ── Storage (localStorage for production) ──
+    function load(key, fb) {
+      try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fb; } catch { return fb; }
+    }
+    function sv(key, val) {
+      try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+    }
+
+    // ── Ratings ──
+    function getRating(totalScore, totalPar) {
+      const d = totalScore - totalPar;
+      if (d <= 0) return { label: "MASTER", color: "#c084fc", stars: 5 };
+      if (d <= 2) return { label: "BRILLIANT", color: "#60a5fa", stars: 4 };
+      if (d <= 5) return { label: "SHARP", color: "#34d399", stars: 3 };
+      if (d <= 9) return { label: "GOOD", color: "#fbbf24", stars: 2 };
+      return { label: "COMPLETE", color: "#fb923c", stars: 1 };
+    }
+    function getRoundEmoji(score, par) {
+      const d = score - par;
+      if (d <= 0) return { e: "🎯", c: "#c084fc" };
+      if (d <= 1) return { e: "🔵", c: "#60a5fa" };
+      if (d <= 2) return { e: "🟢", c: "#34d399" };
+      if (d <= 4) return { e: "🟡", c: "#fbbf24" };
+      return { e: "🟠", c: "#fb923c" };
+    }
+
+    // ── Confetti ──
+    function Confetti({ active }) {
+      const pieces = useMemo(() =>
+        Array.from({ length: 50 }, (_, i) => ({
+          id: i, x: Math.random() * 100, delay: Math.random() * 0.6,
+          dur: 1 + Math.random() * 1.2,
+          color: ["#c084fc","#60a5fa","#34d399","#fbbf24","#f472b6","#22d3ee"][i % 6],
+          w: 4 + Math.random() * 5, h: 2 + Math.random() * 4,
+          drift: (Math.random() - 0.5) * 80, rot: Math.random() * 360,
+        })), []);
+      if (!active) return null;
+      return (
+        <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 9999, overflow: "hidden" }}>
+          {pieces.map(p => (
+            <div key={p.id} style={{
+              position: "absolute", left: `${p.x}%`, top: -16,
+              width: p.w, height: p.h, background: p.color, borderRadius: 1,
+              animation: `confettiFall ${p.dur}s ${p.delay}s ease-in forwards`,
+              transform: `translateX(${p.drift}px) rotate(${p.rot}deg)`,
+            }} />
+          ))}
+        </div>
+      );
+    }
+
+    // ── Modal ──
+    function Modal({ open, onClose, title, children }) {
+      if (!open) return null;
+      return (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 1000,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(2,6,12,0.9)", backdropFilter: "blur(20px)",
+          animation: "fadeIn 0.15s ease",
+        }} onClick={onClose}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: "#0c0e14", border: "1px solid rgba(255,255,255,0.06)",
+            borderRadius: 20, padding: 24, maxWidth: 400, width: "92%",
+            maxHeight: "85vh", overflowY: "auto",
+            animation: "modalIn 0.25s cubic-bezier(0.16,1,0.3,1)",
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+              <h2 style={{ fontSize: 17, fontWeight: 800, color: "#e2e8f0", margin: 0, fontFamily: "var(--fd)" }}>{title}</h2>
+              <button onClick={onClose} style={{
+                background: "rgba(255,255,255,0.04)", border: "none", color: "#475569",
+                cursor: "pointer", padding: 6, borderRadius: 8, display: "flex",
+              }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+            {children}
+          </div>
+        </div>
+      );
+    }
+
+    // ══════════════════════════════════════════
+    //  GAME BOARD — with SVG edge lines
+    // ══════════════════════════════════════════
+    function GameBoard({ puzzle, onComplete }) {
+      const [path, setPath] = useState([puzzle.start]);
+      const [revealed, setRevealed] = useState(new Set());
+      const [revealedMisses, setRevealedMisses] = useState(new Set());
+      const [penalties, setPenalties] = useState(0);
+      const [shakeWord, setShakeWord] = useState(null);
+      const [pulseWord, setPulseWord] = useState(null);
+      const [done, setDone] = useState(false);
+      const [showConfetti, setShowConfetti] = useState(false);
+      const adj = useRef(buildAdj(puzzle.words, puzzle.edges)).current;
+      const startTime = useRef(Date.now());
+      const timerRef = useRef(null);
+      const [elapsed, setElapsed] = useState(0);
+      const gridRef = useRef(null);
+      const tileRefs = useRef({});
+      const [tilePositions, setTilePositions] = useState({});
+
+      useEffect(() => {
+        startTime.current = Date.now();
+        timerRef.current = setInterval(() => setElapsed(Date.now() - startTime.current), 100);
+        return () => clearInterval(timerRef.current);
+      }, []);
+      useEffect(() => { if (done) clearInterval(timerRef.current); }, [done]);
+
+      const updatePositions = useCallback(() => {
+        if (!gridRef.current) return;
+        const gridRect = gridRef.current.getBoundingClientRect();
+        const pos = {};
+        for (const word of puzzle.words) {
+          const el = tileRefs.current[word];
+          if (el) {
+            const r = el.getBoundingClientRect();
+            pos[word] = { x: r.left - gridRect.left + r.width / 2, y: r.top - gridRect.top + r.height / 2 };
+          }
+        }
+        setTilePositions(pos);
+      }, [puzzle.words]);
+
+      useLayoutEffect(() => { updatePositions(); }, [updatePositions]);
+      useEffect(() => {
+        const ro = new ResizeObserver(updatePositions);
+        if (gridRef.current) ro.observe(gridRef.current);
+        return () => ro.disconnect();
+      }, [updatePositions]);
+
+      const currentWord = path[path.length - 1];
+      const orderedWords = useMemo(() => {
+        const rng = makeRng(getDateSeed() + puzzle.start + puzzle.end);
+        const mid = puzzle.words.filter(w => w !== puzzle.start && w !== puzzle.end);
+        for (let i = mid.length - 1; i > 0; i--) {
+          const j = Math.floor(rng() * (i + 1));
+          [mid[i], mid[j]] = [mid[j], mid[i]];
+        }
+        return [puzzle.start, ...mid, puzzle.end];
+      }, [puzzle]);
+
+      const clickWord = useCallback((word) => {
+        if (done || path.includes(word)) return;
+        const neighbors = adj[currentWord] || [];
+        const edgeKey = [currentWord, word].sort().join("|");
+        if (neighbors.includes(word)) {
+          setRevealed(prev => new Set([...prev, edgeKey]));
+          const newPath = [...path, word];
+          setPath(newPath);
+          setPulseWord(word);
+          setTimeout(() => setPulseWord(null), 600);
+          if (word === puzzle.end) {
+            setDone(true);
+            setShowConfetti(true);
+            setTimeout(() => setShowConfetti(false), 2800);
+            onComplete(newPath.length - 1, penalties, Date.now() - startTime.current);
+          }
+        } else {
+          setRevealedMisses(prev => new Set([...prev, edgeKey]));
+          setPenalties(p => p + 1);
+          setShakeWord(word);
+          setTimeout(() => setShakeWord(null), 500);
+        }
+      }, [path, adj, currentWord, done, penalties, puzzle.end, onComplete]);
+
+      const undo = () => {
+        if (path.length > 1 && !done) setPath(path.slice(0, -1));
+      };
+
+      const score = (path.length - 1) + penalties;
+      const svgLines = useMemo(() => {
+        const lines = [];
+        for (const ek of revealed) {
+          const [a, b] = ek.split("|");
+          if (tilePositions[a] && tilePositions[b]) {
+            const inPath = path.includes(a) && path.includes(b) &&
+              Math.abs(path.indexOf(a) - path.indexOf(b)) === 1;
+            lines.push({ x1: tilePositions[a].x, y1: tilePositions[a].y,
+              x2: tilePositions[b].x, y2: tilePositions[b].y, inPath, key: ek });
+          }
+        }
+        for (const ek of revealedMisses) {
+          const [a, b] = ek.split("|");
+          if (tilePositions[a] && tilePositions[b] && !revealed.has(ek)) {
+            lines.push({ x1: tilePositions[a].x, y1: tilePositions[a].y,
+              x2: tilePositions[b].x, y2: tilePositions[b].y, miss: true, key: "m-" + ek });
+          }
+        }
+        return lines;
+      }, [revealed, revealedMisses, tilePositions, path]);
+
+      return (
+        <div>
+          <Confetti active={showConfetti} />
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "6px 4px 10px", fontFamily: "var(--fm)", fontSize: 12, fontWeight: 600, color: "#475569",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 9, letterSpacing: 1.2, textTransform: "uppercase", color: "#334155" }}>Score</span>
+              <span style={{
+                fontSize: 20, fontWeight: 800, fontFamily: "var(--fd)",
+                color: score <= puzzle.par ? "#22d3ee" : score <= puzzle.par + 3 ? "#fbbf24" : "#f87171",
+                transition: "color 0.3s",
+              }}>{score}</span>
+            </div>
+            <div style={{
+              background: "rgba(255,255,255,0.03)", borderRadius: 8,
+              padding: "4px 10px", fontSize: 11, border: "1px solid rgba(255,255,255,0.04)", color: "#475569",
+            }}>Par {puzzle.par}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{ fontSize: 9, letterSpacing: 1.2, textTransform: "uppercase", color: "#334155" }}>Miss</span>
+                <span style={{ fontSize: 16, fontWeight: 800, fontFamily: "var(--fd)", color: penalties > 0 ? "#f87171" : "#1e293b" }}>{penalties}</span>
+              </div>
+              <span style={{ color: "#334155", fontSize: 13, fontFamily: "var(--fm)", minWidth: 44, textAlign: "right" }}>{formatTime(elapsed)}</span>
+            </div>
+          </div>
+
+          <div ref={gridRef} style={{ position: "relative" }}>
+            <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 2 }}>
+              {svgLines.map(l => (
+                <line key={l.key} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2}
+                  stroke={l.miss ? "#ef4444" : l.inPath ? "#22d3ee" : "rgba(148,163,184,0.2)"}
+                  strokeWidth={l.miss ? 1.5 : l.inPath ? 2.5 : 1.5}
+                  strokeDasharray={l.miss ? "6 4" : "none"}
+                  opacity={l.miss ? 0.5 : l.inPath ? 0.7 : 0.35}
+                  strokeLinecap="round"
+                  style={{ transition: "all 0.3s ease" }}
+                />
+              ))}
+            </svg>
+            <div style={{ display: "grid", gridTemplateColumns: `repeat(${COLS}, 1fr)`, gap: 6, padding: 6, position: "relative", zIndex: 3 }}>
+              {orderedWords.map(word => {
+                const isStart = word === puzzle.start;
+                const isEnd = word === puzzle.end;
+                const inPath = path.includes(word);
+                const isCurrent = word === currentWord;
+                const isShaking = word === shakeWord;
+                const isPulsing = word === pulseWord;
+                let bg, border, tc, shadow;
+                if (isShaking) {
+                  bg = "rgba(239,68,68,0.12)"; border = "1.5px solid rgba(239,68,68,0.4)"; tc = "#f87171"; shadow = "0 0 16px rgba(239,68,68,0.15)";
+                } else if (done && isEnd) {
+                  bg = "linear-gradient(135deg, rgba(34,211,238,0.15), rgba(52,211,153,0.1))"; border = "2px solid rgba(34,211,238,0.5)"; tc = "#22d3ee"; shadow = "0 0 20px rgba(34,211,238,0.2)";
+                } else if (isCurrent) {
+                  bg = "linear-gradient(135deg, rgba(34,211,238,0.12), rgba(96,165,250,0.08))"; border = "2px solid rgba(34,211,238,0.4)"; tc = "#e2e8f0"; shadow = "0 0 20px rgba(34,211,238,0.12)";
+                } else if (inPath) {
+                  bg = "rgba(34,211,238,0.06)"; border = "1.5px solid rgba(34,211,238,0.15)"; tc = "#67e8f9"; shadow = "none";
+                } else if (isEnd) {
+                  bg = "rgba(251,191,36,0.05)"; border = "1.5px solid rgba(251,191,36,0.12)"; tc = "#fbbf24"; shadow = "none";
+                } else {
+                  bg = "rgba(255,255,255,0.02)"; border = "1px solid rgba(255,255,255,0.05)"; tc = "#64748b"; shadow = "none";
+                }
+                return (
+                  <button key={word} ref={el => (tileRefs.current[word] = el)} onClick={() => clickWord(word)} style={{
+                    background: bg, border, color: tc, boxShadow: shadow, borderRadius: 10, padding: "13px 4px",
+                    fontSize: word.length > 6 ? 10.5 : 12, fontWeight: 700, fontFamily: "var(--fd)", letterSpacing: 0.6,
+                    cursor: done || inPath ? "default" : "pointer", transition: "all 0.2s cubic-bezier(0.16,1,0.3,1)",
+                    transform: isShaking ? "translateX(-3px)" : isPulsing ? "scale(1.08)" : isCurrent ? "scale(1.02)" : "scale(1)",
+                    animation: isShaking ? "shake 0.4s ease" : isPulsing ? "celebPop 0.5s cubic-bezier(0.16,1,0.3,1)" : "none",
+                    position: "relative", overflow: "hidden", minHeight: 44,
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+                    opacity: inPath && !isCurrent && !isEnd ? 0.6 : 1,
+                  }}>
+                    {isCurrent && <span style={{ fontSize: 9, opacity: 0.7 }}>⚡</span>}
+                    {word}
+                    {isEnd && !inPath && <span style={{ fontSize: 8, opacity: 0.4, marginLeft: 2 }}>◎</span>}
+                    {isPulsing && (
+                      <div style={{
+                        position: "absolute", inset: 0, borderRadius: 10,
+                        background: "radial-gradient(circle, rgba(34,211,238,0.25) 0%, transparent 70%)",
+                        animation: "pulseOverlay 0.5s ease-out forwards",
+                      }} />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {path.length > 1 && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "8px 0 2px", flexWrap: "wrap" }}>
+              {path.map((w, i) => (
+                <span key={i} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, fontFamily: "var(--fd)",
+                    color: w === puzzle.end ? "#22d3ee" : i === path.length - 1 ? "#67e8f9" : "#475569",
+                    animation: i === path.length - 1 ? "fadeSlideIn 0.3s ease" : "none",
+                  }}>{w}</span>
+                  {i < path.length - 1 && <span style={{ color: "#1e293b", fontSize: 10 }}>→</span>}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {(() => {
+            const isStuck = !done && path.length > 1 && (adj[currentWord] || []).every(n => path.includes(n));
+            return (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "6px 0" }}>
+                {isStuck && (
+                  <div style={{
+                    fontSize: 11, color: "#f59e0b", fontWeight: 600, fontFamily: "var(--fd)",
+                    padding: "6px 14px", borderRadius: 8,
+                    background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.12)",
+                    animation: "fadeSlideIn 0.3s ease",
+                  }}>
+                    Dead end — tap Undo to backtrack
+                  </div>
+                )}
+                <button onClick={undo} disabled={path.length <= 1 || done} style={{
+                  background: isStuck ? "rgba(245,158,11,0.08)" : "none",
+                  border: isStuck ? "1px solid rgba(245,158,11,0.2)" : "1px solid rgba(255,255,255,0.04)",
+                  borderRadius: 8, padding: "6px 16px", color: isStuck ? "#f59e0b" : "#334155",
+                  fontSize: 11, fontWeight: 600, fontFamily: "var(--fd)",
+                  cursor: path.length <= 1 || done ? "default" : "pointer",
+                  opacity: path.length <= 1 || done ? 0.2 : isStuck ? 1 : 0.5,
+                  display: "flex", alignItems: "center", gap: 5,
+                  animation: isStuck ? "shake 0.4s ease" : "none",
+                }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 10h10a5 5 0 015 5v2M3 10l6-6M3 10l6 6"/></svg>
+                  Undo
+                </button>
+              </div>
+            );
+          })()}
+        </div>
+      );
+    }
+
+    // ══════════════════════════════════════════
+    //  MAIN APP
+    // ══════════════════════════════════════════
+    function Trawl() {
+      const [loading, setLoading] = useState(true);
+      const [rounds, setRounds] = useState([null, null, null]);
+      const [currentRound, setCurrentRound] = useState(0);
+      const [roundScores, setRoundScores] = useState([null, null, null]);
+      const [stats, setStats] = useState({ played: 0, streak: 0, bestTotal: 999, lastDate: null });
+      const [showHelp, setShowHelp] = useState(false);
+      const [showStats, setShowStats] = useState(false);
+      const [shared, setShared] = useState(false);
+      const [showOptimal, setShowOptimal] = useState([false, false, false]);
+      const [countdown, setCountdown] = useState("");
+      const [justCompleted, setJustCompleted] = useState(null);
+
+      const dayNum = getDayNum();
+      const dateSeed = getDateSeed();
+
+      useEffect(() => {
+        const tick = () => {
+          const now = new Date();
+          const tmrw = new Date(now); tmrw.setHours(24, 0, 0, 0);
+          const diff = tmrw - now;
+          setCountdown(`${Math.floor(diff/3600000)}:${String(Math.floor((diff%3600000)/60000)).padStart(2,"0")}:${String(Math.floor((diff%60000)/1000)).padStart(2,"0")}`);
+        };
+        tick(); const iv = setInterval(tick, 1000);
+        return () => clearInterval(iv);
+      }, []);
+
+      useEffect(() => {
+        (async () => {
+          const savedStats = load(STORAGE.STATS, { played: 0, streak: 0, bestTotal: 999, lastDate: null });
+          setStats(savedStats);
+          const savedToday = load(STORAGE.TODAY, null);
+          if (savedToday?.date === dateSeed) {
+            setRounds(savedToday.rounds || [null, null, null]);
+            setRoundScores(savedToday.scores || [null, null, null]);
+            const fi = (savedToday.scores || []).findIndex(s => s === null);
+            setCurrentRound(fi === -1 ? 2 : fi);
+            setLoading(false);
+            return;
+          }
+          const gen = await Promise.all([
+            generateRound(1, dayNum, dateSeed),
+            generateRound(2, dayNum, dateSeed),
+            generateRound(3, dayNum, dateSeed),
+          ]);
+          setRounds(gen);
+          sv(STORAGE.TODAY, { date: dateSeed, rounds: gen, scores: [null, null, null] });
+          setLoading(false);
+        })();
+      }, []);
+
+      const allDone = roundScores.every(s => s !== null);
+      const totalScore = roundScores.reduce((a, r) => a + (r?.score || 0), 0);
+      const totalPar = roundScores.reduce((a, r) => a + (r?.par || 0), 0);
+      const totalTime = roundScores.reduce((a, r) => a + (r?.time || 0), 0);
+      const rating = allDone ? getRating(totalScore, totalPar) : null;
+
+      const completeRound = (rIdx, steps, penalties, time) => {
+        const ns = [...roundScores];
+        ns[rIdx] = { score: steps + penalties, steps, penalties, par: rounds[rIdx].par, time };
+        setRoundScores(ns);
+        setTimeout(() => setJustCompleted(rIdx), 800);
+        if (ns.every(s => s !== null)) {
+          const total = ns.reduce((a, r) => a + r.score, 0);
+          const newStats = {
+            played: stats.played + 1,
+            streak: stats.lastDate === dateSeed ? stats.streak : stats.streak + 1,
+            bestTotal: Math.min(stats.bestTotal, total),
+            lastDate: dateSeed,
+          };
+          setStats(newStats);
+          sv(STORAGE.STATS, newStats);
+        }
+        sv(STORAGE.TODAY, { date: dateSeed, rounds, scores: ns });
+      };
+
+      const advanceFromInterstitial = () => {
+        const rIdx = justCompleted;
+        setJustCompleted(null);
+        const ns = roundScores;
+        if (!ns.every(s => s !== null)) {
+          const next = ns.findIndex((s, i) => i > rIdx && s === null);
+          if (next !== -1) setCurrentRound(next);
+        }
+      };
+
+      const shareResults = () => {
+        if (!allDone) return;
+        const lines = [`🌊 TRAWL #${dayNum}  ⚡${formatTime(totalTime)}`, ""];
+        roundScores.forEach((r, i) => {
+          const re = getRoundEmoji(r.score, r.par);
+          lines.push(`R${i + 1} ${re.e}  ${r.score} (par ${r.par}) · ${formatTime(r.time)}`);
+        });
+        lines.push("", `Total: ${totalScore} · ${rating.label}`);
+        lines.push(Array.from({ length: rating.stars }, () => "⭐").join(""));
+        lines.push("", "playtrawl.com");
+        try { navigator.clipboard.writeText(lines.join("\n")); } catch {}
+        setShared(true); setTimeout(() => setShared(false), 2500);
+      };
+
+      if (loading) {
+        return (
+          <div style={{ background: "#060a10", color: "#e2e8f0", minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "var(--fd)" }}>
+            <div style={{
+              fontSize: 30, fontWeight: 900, letterSpacing: 6,
+              background: "linear-gradient(135deg, #22d3ee, #60a5fa, #818cf8)",
+              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+              animation: "logoWave 2s ease-in-out infinite", marginBottom: 16,
+            }}>TRAWL</div>
+            <div style={{ color: "#334155", fontSize: 11, fontFamily: "var(--fm)" }}>Loading puzzle...</div>
+          </div>
+        );
+      }
+
+      return (
+        <div style={{
+          background: "#060a10", color: "#e2e8f0", minHeight: "100vh",
+          display: "flex", flexDirection: "column",
+          fontFamily: "var(--fd)", maxWidth: 440, margin: "0 auto", padding: "0 16px",
+        }}>
+          {/* Header */}
+          <div style={{ padding: "14px 0 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+              <div style={{
+                fontSize: 22, fontWeight: 900, letterSpacing: 5,
+                background: "linear-gradient(135deg, #22d3ee, #60a5fa, #818cf8)",
+                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+              }}>TRAWL</div>
+              <span style={{ fontSize: 9, fontWeight: 600, color: "#1e293b", fontFamily: "var(--fm)", letterSpacing: 1 }}>#{dayNum}</span>
+            </div>
+            <div style={{ display: "flex", gap: 4 }}>
+              <button onClick={() => setShowHelp(true)} style={{
+                background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)",
+                borderRadius: 8, padding: "6px 8px", color: "#475569", display: "flex",
+              }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01"/></svg>
+              </button>
+              <button onClick={() => setShowStats(true)} style={{
+                background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)",
+                borderRadius: 8, padding: "6px 8px", color: "#475569", display: "flex",
+              }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Round tabs */}
+          <div style={{ display: "flex", gap: 6, justifyContent: "center", padding: "8px 0 10px" }}>
+            {[0, 1, 2].map(i => {
+              const isDone = roundScores[i] !== null;
+              const active = i === currentRound;
+              const re = isDone ? getRoundEmoji(roundScores[i].score, roundScores[i].par) : null;
+              return (
+                <button key={i} onClick={() => (isDone || active) && setCurrentRound(i)} style={{
+                  background: active ? "rgba(34,211,238,0.08)" : "rgba(255,255,255,0.015)",
+                  border: active ? "1.5px solid rgba(34,211,238,0.25)" : "1px solid rgba(255,255,255,0.04)",
+                  borderRadius: 10, padding: "8px 18px",
+                  color: active ? "#22d3ee" : isDone ? re?.c || "#475569" : "#1e293b",
+                  fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 6,
+                  transition: "all 0.2s", cursor: isDone || active ? "pointer" : "default",
+                }}>
+                  R{i + 1}
+                  {isDone && <span style={{ fontFamily: "var(--fm)", fontSize: 13, fontWeight: 700 }}>{roundScores[i].score}</span>}
+                  {active && !isDone && <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22d3ee" }} />}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Game area */}
+          <div style={{ flex: 1 }}>
+            {/* Round interstitial */}
+            {justCompleted !== null && roundScores[justCompleted] && (
+              <div style={{ textAlign: "center", padding: "24px 0", animation: "winPop 0.4s cubic-bezier(0.16,1,0.3,1)" }}>
+                {(() => {
+                  const r = roundScores[justCompleted];
+                  const re = getRoundEmoji(r.score, r.par);
+                  return (
+                    <Fragment>
+                      <div style={{ fontSize: 13, color: "#334155", fontWeight: 600, letterSpacing: 1 }}>ROUND {justCompleted + 1} COMPLETE</div>
+                      <div style={{ fontSize: 44, fontWeight: 900, color: re.c, fontFamily: "var(--fd)", margin: "8px 0 4px" }}>{r.score}</div>
+                      <div style={{ fontSize: 12, color: "#475569", fontFamily: "var(--fm)" }}>
+                        {r.steps} steps + {r.penalties} misses · par {r.par} · {formatTime(r.time)}
+                      </div>
+                      {r.score <= r.par && <div style={{ color: "#22d3ee", fontSize: 13, fontWeight: 700, marginTop: 6 }}>At par! 🎯</div>}
+                      {r.score > r.par && r.score <= r.par + 2 && <div style={{ color: "#60a5fa", fontSize: 13, fontWeight: 700, marginTop: 6 }}>Close to par!</div>}
+                      <div style={{
+                        marginTop: 20, padding: "14px 16px", borderRadius: 12,
+                        background: "rgba(34,211,238,0.04)", border: "1px solid rgba(34,211,238,0.08)",
+                      }}>
+                        <div style={{ fontSize: 9, color: "#22d3ee", fontWeight: 700, letterSpacing: 2, marginBottom: 8 }}>SHORTEST PATH</div>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flexWrap: "wrap" }}>
+                          {rounds[justCompleted].optimalPath.map((w, i) => (
+                            <span key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <span style={{
+                                fontSize: 14, fontWeight: 800, fontFamily: "var(--fd)",
+                                color: i === 0 ? "#22d3ee" : i === rounds[justCompleted].optimalPath.length - 1 ? "#fbbf24" : "#e2e8f0",
+                                animation: `fadeSlideIn 0.3s ${i * 0.08}s ease both`,
+                              }}>{w}</span>
+                              {i < rounds[justCompleted].optimalPath.length - 1 && (
+                                <span style={{ color: "#1e293b", fontSize: 10, animation: `fadeSlideIn 0.3s ${i * 0.08 + 0.04}s ease both` }}>→</span>
+                              )}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <button onClick={allDone ? () => setJustCompleted(null) : advanceFromInterstitial} style={{
+                        marginTop: 20,
+                        background: "linear-gradient(135deg, #22d3ee, #60a5fa" + (allDone ? ", #818cf8)" : ")"),
+                        border: "none", borderRadius: 12, padding: "12px 32px",
+                        color: "#fff", fontSize: 14, fontWeight: 700, fontFamily: "var(--fd)",
+                        boxShadow: "0 4px 16px rgba(34,211,238,0.2)",
+                        display: "inline-flex", alignItems: "center", gap: 8,
+                      }}>
+                        {allDone ? "See Results" : `Round ${justCompleted + 2} →`}
+                      </button>
+                    </Fragment>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Active game */}
+            {!allDone && justCompleted === null && rounds[currentRound] && (
+              <div key={currentRound} style={{ animation: "slideUp 0.3s ease" }}>
+                <div style={{
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 16,
+                  padding: "12px 16px", marginBottom: 8,
+                  background: "linear-gradient(135deg, rgba(34,211,238,0.03), rgba(96,165,250,0.03))",
+                  border: "1px solid rgba(34,211,238,0.06)", borderRadius: 14,
+                }}>
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 8, color: "#22d3ee", fontWeight: 700, letterSpacing: 2 }}>START</div>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: "#e2e8f0", letterSpacing: 0.5 }}>{rounds[currentRound].start}</div>
+                  </div>
+                  <div style={{ width: 32, height: 1, background: "linear-gradient(90deg, rgba(34,211,238,0.3), rgba(96,165,250,0.3))" }} />
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 8, color: "#fbbf24", fontWeight: 700, letterSpacing: 2 }}>TARGET</div>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: "#fef3c7", letterSpacing: 0.5 }}>{rounds[currentRound].end}</div>
+                  </div>
+                </div>
+                <GameBoard puzzle={rounds[currentRound]} onComplete={(s, p, t) => completeRound(currentRound, s, p, t)} />
+              </div>
+            )}
+
+            {/* All done results */}
+            {allDone && justCompleted === null && (
+              <div style={{ textAlign: "center", marginTop: 16, animation: "winPop 0.5s cubic-bezier(0.16,1,0.3,1)" }}>
+                <div style={{ display: "flex", justifyContent: "center", gap: 4, marginBottom: 6 }}>
+                  {Array.from({ length: rating.stars }).map((_, i) => (
+                    <span key={i} style={{ fontSize: 22, animation: `fadeSlideIn 0.3s ${i * 0.1}s ease both` }}>⭐</span>
+                  ))}
+                </div>
+                <div style={{
+                  fontSize: 32, fontWeight: 900, letterSpacing: -1,
+                  background: `linear-gradient(135deg, ${rating.color}, #e2e8f0)`,
+                  WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", marginBottom: 4,
+                }}>{rating.label}</div>
+                <div style={{ color: "#475569", fontSize: 13, fontFamily: "var(--fm)" }}>
+                  Total: <strong style={{ color: "#e2e8f0" }}>{totalScore}</strong> · par {totalPar}
+                  <span style={{ marginLeft: 8, color: "#334155" }}>⚡{formatTime(totalTime)}</span>
+                  {totalScore <= totalPar && (
+                    <span style={{ color: "#22d3ee", marginLeft: 8 }}>
+                      {totalScore < totalPar ? `${totalPar - totalScore} under par!` : "Made par!"}
+                    </span>
+                  )}
+                </div>
+
+                <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 18 }}>
+                  {roundScores.map((r, i) => {
+                    if (!r) return null;
+                    const re = getRoundEmoji(r.score, r.par);
+                    return (
+                      <div key={i} style={{
+                        padding: "12px 10px", borderRadius: 12,
+                        background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.04)",
+                        textAlign: "center", flex: 1,
+                      }}>
+                        <div style={{ fontSize: 9, color: "#1e293b", fontWeight: 600, letterSpacing: 1.2, marginBottom: 6 }}>R{i + 1}</div>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: re.c }}>{r.score}</div>
+                        <div style={{ fontSize: 10, color: "#1e293b", fontFamily: "var(--fm)", marginTop: 2 }}>par {r.par}</div>
+                        <div style={{ fontSize: 9, color: "#0f172a", marginTop: 3, fontFamily: "var(--fm)" }}>
+                          {r.steps}s + {r.penalties}p · {formatTime(r.time)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Share + Ad slot */}
+                <button onClick={shareResults} style={{
+                  marginTop: 18, width: "100%",
+                  background: shared ? "rgba(52,211,153,0.15)" : "linear-gradient(135deg, #22d3ee, #60a5fa, #818cf8)",
+                  border: shared ? "1px solid rgba(52,211,153,0.3)" : "none", borderRadius: 12, padding: "13px",
+                  color: "#fff", fontSize: 13, fontWeight: 700,
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                }}>
+                  {shared ? (
+                    <Fragment>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                      Copied!
+                    </Fragment>
+                  ) : (
+                    <Fragment>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg>
+                      Share Results
+                    </Fragment>
+                  )}
+                </button>
+
+                <div style={{ color: "#1e293b", fontSize: 11, fontFamily: "var(--fm)", marginTop: 12 }}>
+                  Next puzzle in <strong style={{ color: "#334155" }}>{countdown}</strong>
+                </div>
+
+                {/* Ad placement — after game completion */}
+                <div className="ad-slot" style={{ marginTop: 20 }}>
+                  {/* Google AdSense — uncomment when approved:
+                  <ins className="adsbygoogle" style={{ display: "block" }} data-ad-client="ca-pub-XXXX" data-ad-slot="XXXX" data-ad-format="auto" data-full-width-responsive="true"></ins>
+                  <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+                  */}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Help Modal */}
+          <Modal open={showHelp} onClose={() => setShowHelp(false)} title="How to Play">
+            <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.7, fontFamily: "var(--fm)" }}>
+              <p style={{ marginBottom: 12 }}>Navigate from <strong style={{ color: "#22d3ee" }}>START</strong> to <strong style={{ color: "#fbbf24" }}>TARGET</strong> by clicking connected words.</p>
+              <p style={{ marginBottom: 12 }}>Connections are <strong style={{ color: "#e2e8f0" }}>hidden</strong> — you discover them by clicking. Words are connected by compound words or strong associations.</p>
+              <p style={{ marginBottom: 12 }}>✅ <strong style={{ color: "#22d3ee" }}>Hit</strong> = words are connected (cyan line)<br/>❌ <strong style={{ color: "#ef4444" }}>Miss</strong> = not connected (+1 penalty, red line)</p>
+              <p style={{ marginBottom: 12 }}>Your score = steps + misses. Lower is better. Try to beat par!</p>
+              <p style={{ marginBottom: 0 }}>Complete all <strong style={{ color: "#e2e8f0" }}>3 rounds</strong> daily. New puzzle at midnight.</p>
+            </div>
+          </Modal>
+
+          {/* Stats Modal */}
+          <Modal open={showStats} onClose={() => setShowStats(false)} title="Statistics">
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 16 }}>
+              {[
+                { v: stats.played, l: "Played" },
+                { v: stats.streak, l: "Streak" },
+                { v: stats.bestTotal < 999 ? stats.bestTotal : "—", l: "Best" },
+              ].map((s, i) => (
+                <div key={i} style={{
+                  textAlign: "center", padding: "12px 8px", borderRadius: 12,
+                  background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.04)",
+                }}>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: "#e2e8f0" }}>{s.v}</div>
+                  <div style={{ fontSize: 9, color: "#334155", fontWeight: 600, letterSpacing: 1, marginTop: 4 }}>{s.l}</div>
+                </div>
+              ))}
+            </div>
+            {allDone && (
+              <button onClick={() => { shareResults(); setShowStats(false); }} style={{
+                width: "100%",
+                background: "linear-gradient(135deg, #22d3ee, #60a5fa, #818cf8)",
+                border: "none", borderRadius: 12, padding: "12px",
+                color: "#fff", fontSize: 13, fontWeight: 700,
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+              }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg>
+                Share Results
+              </button>
+            )}
+            <div style={{ marginTop: 12, textAlign: "center", fontSize: 10, color: "#0f172a" }}>
+              Next puzzle in <strong style={{ color: "#334155" }}>{countdown}</strong>
+            </div>
+          </Modal>
+
+          {/* Footer */}
+          <div style={{
+            marginTop: "auto", padding: "16px 0 12px", textAlign: "center",
+            fontSize: 9, color: "#0f172a", letterSpacing: 2, fontWeight: 500,
+          }}>
+            TRAWL · 3 ROUNDS DAILY
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<Trawl />, document.getElementById("root"));
+  </script>
+</body>
+</html>
