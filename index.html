@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>TRAWL â Daily Word Maze</title>
+  <title>TRAWL — Daily Word Maze</title>
   <meta name="description" content="Navigate the fog. Find the path. 3 rounds daily. A word puzzle game where connections are hidden until you discover them.">
   <meta name="theme-color" content="#060a10">
   <link rel="canonical" href="https://playtrawl.com">
 
   <!-- Open Graph -->
-  <meta property="og:title" content="TRAWL â Daily Word Maze">
+  <meta property="og:title" content="TRAWL — Daily Word Maze">
   <meta property="og:description" content="Navigate the fog. Find the path. 3 rounds daily.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://playtrawl.com">
@@ -19,7 +19,7 @@
 
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="TRAWL â Daily Word Maze">
+  <meta name="twitter:title" content="TRAWL — Daily Word Maze">
   <meta name="twitter:description" content="Navigate the fog. Find the path. 3 rounds daily.">
   <meta name="twitter:image" content="https://playtrawl.com/og.png">
 
@@ -30,14 +30,14 @@
   <link rel="manifest" href="/manifest.json">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>ð</text></svg>">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌊</text></svg>">
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  <!-- Google AdSense â replace ca-pub-XXXX with your publisher ID -->
+  <!-- Google AdSense — replace ca-pub-XXXX with your publisher ID -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXX" crossorigin="anonymous"></script>
 
   <style>
@@ -77,7 +77,7 @@
     const STORAGE = { STATS: "trawl-stats", TODAY: "trawl-today-v5" };
     const COLS = 4;
 
-    // ââ Date Utils ââ
+    // ── Date Utils ──
     const getDateSeed = () => {
       const d = new Date();
       return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -88,14 +88,14 @@
       return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
     };
 
-    // ââ Seeded RNG ââ
+    // ── Seeded RNG ──
     function makeRng(seed) {
       let h = 0;
       for (let i = 0; i < seed.length; i++) h = ((h << 5) - h + seed.charCodeAt(i)) | 0;
       return () => { h = (h * 16807) % 2147483647; return (h & 0x7fffffff) / 0x7fffffff; };
     }
 
-    // ââ BFS ââ
+    // ── BFS ──
     function bfs(adj, start, end) {
       const q = [[start]], v = new Set([start]);
       while (q.length) {
@@ -117,7 +117,7 @@
       return a;
     }
 
-    // ââ AI Generation (calls Anthropic API â needs key configured via proxy) ââ
+    // ── AI Generation (calls Anthropic API — needs key configured via proxy) ──
     async function generateRound(roundNum, dayNum, dateSeed) {
       const parTarget = roundNum === 1 ? 3 : roundNum === 2 ? 4 : 5;
       const wordCount = roundNum === 1 ? 12 : roundNum === 2 ? 14 : 16;
@@ -149,7 +149,7 @@
       return FALLBACKS[tierStart + (dayNum % 3)];
     }
 
-    // ââ Fallbacks (BFS-verified, every edge is a real compound word) ââ
+    // ── Fallbacks (BFS-verified, every edge is a real compound word) ──
     const FALLBACKS = [
       // Tier 1: EASY
       {words:["RAIN","BOW","COAT","DROP","STORM","WATER","FALL","OUT"],start:"RAIN",end:"FALL",
@@ -185,7 +185,7 @@
        par:3,optimalPath:["SPACE","DEEP","SLEEP","DREAM"]},
     ];
 
-    // ââ Storage (localStorage for production) ââ
+    // ── Storage (localStorage for production) ──
     function load(key, fb) {
       try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fb; } catch { return fb; }
     }
@@ -193,7 +193,7 @@
       try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
     }
 
-    // ââ Ratings ââ
+    // ── Ratings ──
     function getRating(totalScore, totalPar) {
       const d = totalScore - totalPar;
       if (d <= 0) return { label: "MASTER", color: "#c084fc", stars: 5 };
@@ -204,14 +204,14 @@
     }
     function getRoundEmoji(score, par) {
       const d = score - par;
-      if (d <= 0) return { e: "ð¯", c: "#c084fc" };
-      if (d <= 1) return { e: "ðµ", c: "#60a5fa" };
-      if (d <= 2) return { e: "ð¢", c: "#34d399" };
-      if (d <= 4) return { e: "ð¡", c: "#fbbf24" };
-      return { e: "ð ", c: "#fb923c" };
+      if (d <= 0) return { e: "🎯", c: "#c084fc" };
+      if (d <= 1) return { e: "🔵", c: "#60a5fa" };
+      if (d <= 2) return { e: "🟢", c: "#34d399" };
+      if (d <= 4) return { e: "🟡", c: "#fbbf24" };
+      return { e: "🟠", c: "#fb923c" };
     }
 
-    // ââ Confetti ââ
+    // ── Confetti ──
     function Confetti({ active }) {
       const pieces = useMemo(() =>
         Array.from({ length: 50 }, (_, i) => ({
@@ -236,7 +236,7 @@
       );
     }
 
-    // ââ Modal ââ
+    // ── Modal ──
     function Modal({ open, onClose, title, children }) {
       if (!open) return null;
       return (
@@ -267,9 +267,9 @@
       );
     }
 
-    // ââââââââââââââââââââââââââââââââââââââââââ
-    //  GAME BOARD â with SVG edge lines
-    // ââââââââââââââââââââââââââââââââââââââââââ
+    // ══════════════════════════════════════════
+    //  GAME BOARD — with SVG edge lines
+    // ══════════════════════════════════════════
     function GameBoard({ puzzle, onComplete }) {
       const [path, setPath] = useState([puzzle.start]);
       const [revealed, setRevealed] = useState(new Set());
@@ -450,9 +450,9 @@
                     display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
                     opacity: inPath && !isCurrent && !isEnd ? 0.6 : 1,
                   }}>
-                    {isCurrent && <span style={{ fontSize: 9, opacity: 0.7 }}>â¡</span>}
+                    {isCurrent && <span style={{ fontSize: 9, opacity: 0.7 }}>⚡</span>}
                     {word}
-                    {isEnd && !inPath && <span style={{ fontSize: 8, opacity: 0.4, marginLeft: 2 }}>â</span>}
+                    {isEnd && !inPath && <span style={{ fontSize: 8, opacity: 0.4, marginLeft: 2 }}>◎</span>}
                     {isPulsing && (
                       <div style={{
                         position: "absolute", inset: 0, borderRadius: 10,
@@ -475,7 +475,7 @@
                     color: w === puzzle.end ? "#22d3ee" : i === path.length - 1 ? "#67e8f9" : "#475569",
                     animation: i === path.length - 1 ? "fadeSlideIn 0.3s ease" : "none",
                   }}>{w}</span>
-                  {i < path.length - 1 && <span style={{ color: "#1e293b", fontSize: 10 }}>â</span>}
+                  {i < path.length - 1 && <span style={{ color: "#1e293b", fontSize: 10 }}>→</span>}
                 </span>
               ))}
             </div>
@@ -492,7 +492,7 @@
                     background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.12)",
                     animation: "fadeSlideIn 0.3s ease",
                   }}>
-                    Dead end â tap Undo to backtrack
+                    Dead end — tap Undo to backtrack
                   </div>
                 )}
                 <button onClick={undo} disabled={path.length <= 1 || done} style={{
@@ -515,9 +515,9 @@
       );
     }
 
-    // ââââââââââââââââââââââââââââââââââââââââââ
+    // ══════════════════════════════════════════
     //  MAIN APP
-    // ââââââââââââââââââââââââââââââââââââââââââ
+    // ══════════════════════════════════════════
     function Trawl() {
       const [loading, setLoading] = useState(true);
       const [rounds, setRounds] = useState([null, null, null]);
@@ -606,13 +606,13 @@
 
       const shareResults = () => {
         if (!allDone) return;
-        const lines = [`ð TRAWL #${dayNum}  â¡${formatTime(totalTime)}`, ""];
+        const lines = [`🌊 TRAWL #${dayNum}  ⚡${formatTime(totalTime)}`, ""];
         roundScores.forEach((r, i) => {
           const re = getRoundEmoji(r.score, r.par);
-          lines.push(`R${i + 1} ${re.e}  ${r.score} (par ${r.par}) Â· ${formatTime(r.time)}`);
+          lines.push(`R${i + 1} ${re.e}  ${r.score} (par ${r.par}) · ${formatTime(r.time)}`);
         });
-        lines.push("", `Total: ${totalScore} Â· ${rating.label}`);
-        lines.push(Array.from({ length: rating.stars }, () => "â­").join(""));
+        lines.push("", `Total: ${totalScore} · ${rating.label}`);
+        lines.push(Array.from({ length: rating.stars }, () => "⭐").join(""));
         lines.push("", "playtrawl.com");
         try { navigator.clipboard.writeText(lines.join("\n")); } catch {}
         setShared(true); setTimeout(() => setShared(false), 2500);
@@ -700,9 +700,9 @@
                       <div style={{ fontSize: 13, color: "#334155", fontWeight: 600, letterSpacing: 1 }}>ROUND {justCompleted + 1} COMPLETE</div>
                       <div style={{ fontSize: 44, fontWeight: 900, color: re.c, fontFamily: "var(--fd)", margin: "8px 0 4px" }}>{r.score}</div>
                       <div style={{ fontSize: 12, color: "#475569", fontFamily: "var(--fm)" }}>
-                        {r.steps} steps + {r.penalties} misses Â· par {r.par} Â· {formatTime(r.time)}
+                        {r.steps} steps + {r.penalties} misses · par {r.par} · {formatTime(r.time)}
                       </div>
-                      {r.score <= r.par && <div style={{ color: "#22d3ee", fontSize: 13, fontWeight: 700, marginTop: 6 }}>At par! ð¯</div>}
+                      {r.score <= r.par && <div style={{ color: "#22d3ee", fontSize: 13, fontWeight: 700, marginTop: 6 }}>At par! 🎯</div>}
                       {r.score > r.par && r.score <= r.par + 2 && <div style={{ color: "#60a5fa", fontSize: 13, fontWeight: 700, marginTop: 6 }}>Close to par!</div>}
                       <div style={{
                         marginTop: 20, padding: "14px 16px", borderRadius: 12,
@@ -718,7 +718,7 @@
                                 animation: `fadeSlideIn 0.3s ${i * 0.08}s ease both`,
                               }}>{w}</span>
                               {i < rounds[justCompleted].optimalPath.length - 1 && (
-                                <span style={{ color: "#1e293b", fontSize: 10, animation: `fadeSlideIn 0.3s ${i * 0.08 + 0.04}s ease both` }}>â</span>
+                                <span style={{ color: "#1e293b", fontSize: 10, animation: `fadeSlideIn 0.3s ${i * 0.08 + 0.04}s ease both` }}>→</span>
                               )}
                             </span>
                           ))}
@@ -732,7 +732,7 @@
                         boxShadow: "0 4px 16px rgba(34,211,238,0.2)",
                         display: "inline-flex", alignItems: "center", gap: 8,
                       }}>
-                        {allDone ? "See Results" : `Round ${justCompleted + 2} â`}
+                        {allDone ? "See Results" : `Round ${justCompleted + 2} →`}
                       </button>
                     </Fragment>
                   );
@@ -768,7 +768,7 @@
               <div style={{ textAlign: "center", marginTop: 16, animation: "winPop 0.5s cubic-bezier(0.16,1,0.3,1)" }}>
                 <div style={{ display: "flex", justifyContent: "center", gap: 4, marginBottom: 6 }}>
                   {Array.from({ length: rating.stars }).map((_, i) => (
-                    <span key={i} style={{ fontSize: 22, animation: `fadeSlideIn 0.3s ${i * 0.1}s ease both` }}>â­</span>
+                    <span key={i} style={{ fontSize: 22, animation: `fadeSlideIn 0.3s ${i * 0.1}s ease both` }}>⭐</span>
                   ))}
                 </div>
                 <div style={{
@@ -777,8 +777,8 @@
                   WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", marginBottom: 4,
                 }}>{rating.label}</div>
                 <div style={{ color: "#475569", fontSize: 13, fontFamily: "var(--fm)" }}>
-                  Total: <strong style={{ color: "#e2e8f0" }}>{totalScore}</strong> Â· par {totalPar}
-                  <span style={{ marginLeft: 8, color: "#334155" }}>â¡{formatTime(totalTime)}</span>
+                  Total: <strong style={{ color: "#e2e8f0" }}>{totalScore}</strong> · par {totalPar}
+                  <span style={{ marginLeft: 8, color: "#334155" }}>⚡{formatTime(totalTime)}</span>
                   {totalScore <= totalPar && (
                     <span style={{ color: "#22d3ee", marginLeft: 8 }}>
                       {totalScore < totalPar ? `${totalPar - totalScore} under par!` : "Made par!"}
@@ -800,7 +800,7 @@
                         <div style={{ fontSize: 22, fontWeight: 800, color: re.c }}>{r.score}</div>
                         <div style={{ fontSize: 10, color: "#1e293b", fontFamily: "var(--fm)", marginTop: 2 }}>par {r.par}</div>
                         <div style={{ fontSize: 9, color: "#0f172a", marginTop: 3, fontFamily: "var(--fm)" }}>
-                          {r.steps}s + {r.penalties}p Â· {formatTime(r.time)}
+                          {r.steps}s + {r.penalties}p · {formatTime(r.time)}
                         </div>
                       </div>
                     );
@@ -832,8 +832,6 @@
                   Next puzzle in <strong style={{ color: "#334155" }}>{countdown}</strong>
                 </div>
 
-                {/* Ad placement â after game completion */}
-                <div className="ad-slot" style={{ marginTop: 20 }}>
                 {/* Ad placement — after game completion */}
                 <div className="ad-slot" style={{ marginTop: 20 }}>
                   {/* AdSense — uncomment when approved and add ins + push call here */}
@@ -846,8 +844,8 @@
           <Modal open={showHelp} onClose={() => setShowHelp(false)} title="How to Play">
             <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.7, fontFamily: "var(--fm)" }}>
               <p style={{ marginBottom: 12 }}>Navigate from <strong style={{ color: "#22d3ee" }}>START</strong> to <strong style={{ color: "#fbbf24" }}>TARGET</strong> by clicking connected words.</p>
-              <p style={{ marginBottom: 12 }}>Connections are <strong style={{ color: "#e2e8f0" }}>hidden</strong> â you discover them by clicking. Words are connected by compound words or strong associations.</p>
-              <p style={{ marginBottom: 12 }}>â <strong style={{ color: "#22d3ee" }}>Hit</strong> = words are connected (cyan line)<br/>â <strong style={{ color: "#ef4444" }}>Miss</strong> = not connected (+1 penalty, red line)</p>
+              <p style={{ marginBottom: 12 }}>Connections are <strong style={{ color: "#e2e8f0" }}>hidden</strong> — you discover them by clicking. Words are connected by compound words or strong associations.</p>
+              <p style={{ marginBottom: 12 }}>✅ <strong style={{ color: "#22d3ee" }}>Hit</strong> = words are connected (cyan line)<br/>❌ <strong style={{ color: "#ef4444" }}>Miss</strong> = not connected (+1 penalty, red line)</p>
               <p style={{ marginBottom: 12 }}>Your score = steps + misses. Lower is better. Try to beat par!</p>
               <p style={{ marginBottom: 0 }}>Complete all <strong style={{ color: "#e2e8f0" }}>3 rounds</strong> daily. New puzzle at midnight.</p>
             </div>
@@ -859,7 +857,7 @@
               {[
                 { v: stats.played, l: "Played" },
                 { v: stats.streak, l: "Streak" },
-                { v: stats.bestTotal < 999 ? stats.bestTotal : "â", l: "Best" },
+                { v: stats.bestTotal < 999 ? stats.bestTotal : "—", l: "Best" },
               ].map((s, i) => (
                 <div key={i} style={{
                   textAlign: "center", padding: "12px 8px", borderRadius: 12,
@@ -892,7 +890,7 @@
             marginTop: "auto", padding: "16px 0 12px", textAlign: "center",
             fontSize: 9, color: "#0f172a", letterSpacing: 2, fontWeight: 500,
           }}>
-            TRAWL Â· 3 ROUNDS DAILY
+            TRAWL · 3 ROUNDS DAILY
           </div>
         </div>
       );
